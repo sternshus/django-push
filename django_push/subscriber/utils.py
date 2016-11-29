@@ -28,8 +28,10 @@ def get_hub_credentials(hub_url):
     return getattr(creds_module, creds_function)(hub_url)
 
 
-def get_domain():
-    if hasattr(settings, 'PUSH_DOMAIN'):
+def get_domain(site):
+    if site:
+        return site.domain
+    elif hasattr(settings, 'PUSH_DOMAIN'):
         return settings.PUSH_DOMAIN
     elif 'django.contrib.sites' in settings.INSTALLED_APPS:
         from django.contrib.sites.models import Site

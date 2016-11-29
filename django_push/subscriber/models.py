@@ -29,7 +29,7 @@ class SubscriptionError(Exception):
 
 
 class SubscriptionManager(models.Manager):
-    def subscribe(self, topic, hub, lease_seconds=None):
+    def subscribe(self, topic, hub, lease_seconds=None, site=None):
         # Only use a secret over HTTPS
         scheme = urlparse(hub).scheme
         defaults = {}
@@ -45,7 +45,7 @@ class SubscriptionManager(models.Manager):
         # commits. At that point, it's safe to send a subscription request
         # which then pings back to the the Subscription object.
         def subscribe():
-            subscription.subscribe(lease_seconds=lease_seconds)
+            subscription.subscribe(lease_seconds=lease_seconds, site=site)
 
         if django.VERSION >= (1, 9):
             transaction.on_commit(subscribe)
@@ -92,16 +92,22 @@ class Subscription(models.Model):
         scheme = 'https' if use_ssl else 'http'
         return '%s://%s%s' % (scheme, get_domain(), callback_url)
 
-    def subscribe(self, lease_seconds=None):
-        return self.send_request(mode='subscribe', lease_seconds=lease_seconds)
+    def dynamic_callback_url(self, site=None):
+        callback_url = reverse('subscriber_callback', args=[self.pk])
+        use_ssl = getattr(settings, 'PUSH_SSL_CALLBACK', False)
+        scheme = 'https' if use_ssl else 'http'
+        return '%s://%s%s' % (scheme, get_domain(site), callback_url)
+
+    def subscribe(self, lease_seconds=None, site=None):
+        return self.send_request(mode='subscribe', lease_seconds=lease_seconds, site=site)
 
     def unsubscribe(self):
         return self.send_request(mode='unsubscribe')
 
-    def send_request(self, mode, lease_seconds=None):
+    def send_request(self, mode, lease_seconds=None, site=None):
         params = {
             'hub.mode': mode,
-            'hub.callback': self.callback_url,
+            'hub.callback': self.dynamic_callback_url(site),
             'hub.topic': self.topic,
             'hub.verify': ['sync', 'async'],
         }

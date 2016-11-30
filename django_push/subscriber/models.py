@@ -44,7 +44,7 @@ class SubscriptionManager(models.Manager):
         # object is created above, it isn't available until the transaction
         # commits. At that point, it's safe to send a subscription request
         # which then pings back to the the Subscription object.
-        def subscribe(site=None):
+        def subscribe():
             subscription.subscribe(lease_seconds=lease_seconds, site=site)
 
         if django.VERSION >= (1, 9):
